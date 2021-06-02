@@ -33,7 +33,7 @@ void vApplicationMallocFailedHook(void)
 static void mem_analysis(void)
 {
 	for (;;) {
-		rtos_printf("Tile[%d]:\n\tMinimum heap free: %d\n\tCurrent heap free: %d\n", THIS_XCORE_TILE, xPortGetMinimumEverFreeHeapSize(), xPortGetFreeHeapSize());
+//		rtos_printf("Tile[%d]:\n\tMinimum heap free: %d\n\tCurrent heap free: %d\n", THIS_XCORE_TILE, xPortGetMinimumEverFreeHeapSize(), xPortGetFreeHeapSize());
 		vTaskDelay(pdMS_TO_TICKS(5000));
 	}
 }
@@ -56,7 +56,7 @@ void startup_task(void *arg)
 
 void vApplicationIdleHook(void)
 {
-    rtos_printf("idle hook on tile %d core %d\n", THIS_XCORE_TILE, rtos_core_id_get());
+//    rtos_printf("idle hook on tile %d core %d\n", THIS_XCORE_TILE, rtos_core_id_get());
     asm volatile("waiteu");
 }
 

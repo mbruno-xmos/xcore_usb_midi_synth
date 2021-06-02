@@ -27,7 +27,7 @@
 #include "tusb.h"
 
 #define XMOS_VID    0x20B1
-#define XVF3652_PID 0x3652
+#define XVF3652_PID 0x4D53
 
 //--------------------------------------------------------------------+
 // Device Descriptors
@@ -111,11 +111,13 @@ const uint16_t tud_audio_desc_lengths[CFG_TUD_AUDIO] = {
         uac2_total_descriptors_length
 };
 
-#define CONFIG_TOTAL_LEN        (TUD_CONFIG_DESC_LEN + CFG_TUD_AUDIO * uac2_total_descriptors_length)
+#define CONFIG_TOTAL_LEN        (TUD_CONFIG_DESC_LEN + CFG_TUD_AUDIO * uac2_total_descriptors_length + TUD_MIDI_DESC_LEN)
 #define EPNUM_AUDIO   0x01
+#define EPNUM_MIDI    0x02
 
 
 #define AUDIO_INTERFACE_STRING_INDEX 4
+#define MIDI_INTERFACE_STRING_INDEX 5
 
 uint8_t const desc_configuration[] = {
     // Interface count, string index, total length, attribute, power in mA
@@ -191,6 +193,9 @@ uint8_t const desc_configuration[] = {
     /* Class-Specific AS Isochronous Audio Data Endpoint Descriptor(4.10.1.2) */
     TUD_AUDIO_DESC_CS_AS_ISO_EP(/*_attr*/ AUDIO_CS_AS_ISO_DATA_EP_ATT_NON_MAX_PACKETS_OK, /*_ctrl*/ AUDIO_CTRL_NONE, /*_lockdelayunit*/ AUDIO_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_UNDEFINED, /*_lockdelay*/ 0x0000),
 #endif
+
+    // Interface number, string index, EP Out & EP In address, EP size
+    TUD_MIDI_DESCRIPTOR(ITF_NUM_MIDI, MIDI_INTERFACE_STRING_INDEX, EPNUM_MIDI, 0x80 | EPNUM_MIDI, 512),
 };
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR
@@ -209,9 +214,10 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index)
 // array of pointer to string descriptors
 char const *string_desc_arr[] = {(const char[]) {0x09, 0x04}, // 0: is supported language is English (0x0409)
         "XMOS",                    // 1: Manufacturer
-        "XVF3652",                 // 2: Product
+        "MIDI Synth",              // 2: Product
         "123456",                  // 3: Serials, should use chip ID
         "UAC2",                    // 4: Audio Interface
+        "MIDI",                    // 5: MIDI Interface
         };
 
 static uint16_t _desc_str[32];

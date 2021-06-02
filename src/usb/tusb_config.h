@@ -59,9 +59,15 @@
 #define CFG_TUD_CDC               0
 #define CFG_TUD_MSC               0
 #define CFG_TUD_HID               0
-#define CFG_TUD_MIDI              0
+#define CFG_TUD_MIDI              1
 #define CFG_TUD_AUDIO             1
 #define CFG_TUD_VENDOR            0
+
+//--------------------------------------------------------------------
+// MIDI CLASS DRIVER CONFIGURATION
+//--------------------------------------------------------------------
+#define CFG_TUD_MIDI_RX_BUFSIZE   (512)
+#define CFG_TUD_MIDI_TX_BUFSIZE   (512)
 
 //--------------------------------------------------------------------
 // AUDIO CLASS DRIVER CONFIGURATION

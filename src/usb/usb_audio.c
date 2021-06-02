@@ -85,10 +85,6 @@ void tud_resume_cb(void)
 
 }
 
-//--------------------------------------------------------------------+
-// AUDIO Task
-//--------------------------------------------------------------------+
-
 #if CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX == 1
 typedef int8_t samp_t;
 #elif CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX == 2
@@ -98,44 +94,6 @@ typedef int32_t samp_t;
 #else
 #error CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX must be either 2 or 4
 #endif
-
-void usb_audio_in_task(void *arg)
-{
-    rtos_intertile_t *intertile_ctx = (rtos_intertile_t*) arg;
-
-    while (!tusb_inited()) {
-        vTaskDelay(10);
-    }
-
-    int note_number = 21;
-    midi_sequencer_reset();
-
-    for (;;) {
-
-        if (mic_interface_open) {
-
-            midi_sequencer_program_change(0);
-            midi_sequencer_note_on(note_number, 127);
-            midi_sequencer_program_change(10);
-            midi_sequencer_note_on(note_number, 127);
-
-            vTaskDelay(250);
-            midi_sequencer_program_change(0);
-            midi_sequencer_note_off(note_number, 127);
-            midi_sequencer_program_change(10);
-            midi_sequencer_note_off(note_number, 127);
-            vTaskDelay(50);
-
-            note_number++;
-            if (note_number > 108) {
-                note_number = 21;
-            }
-        } else {
-            midi_sequencer_reset();
-            note_number = 21;
-        }
-    }
-}
 
 //--------------------------------------------------------------------+
 // Application Callback API Implementations
@@ -410,10 +368,14 @@ bool tud_audio_tx_done_pre_load_cb(uint8_t rhport,
         mic_interface_open = true;
     }
 
-    samp_t samples[SAMPLES_PER_FRAME_NOMINAL][CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX];
+    samp_t samples[SAMPLES_PER_FRAME_NOMINAL][CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX] = {{0}};
+
     for (int i = 0; i < SAMPLES_PER_FRAME_NOMINAL; i++) {
-        for (int ch = 0; ch < CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX; ch++) {
-            samples[i][ch] = sample_get_next(midi_sequencer_synth_state(), ch);
+        for (int synth_ch = 0, usb_ch = 0; synth_ch < SYNTH_CHANNELS; synth_ch++, usb_ch++) {
+            if (usb_ch >= CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX) {
+                usb_ch = 0;
+            }
+            samples[i][usb_ch] += sample_get_next(midi_sequencer_synth_state(), synth_ch) / (SYNTH_CHANNELS / CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX);
         }
     }
     memcpy(buf, samples, BYTES_PER_TX_FRAME_NOMINAL);
@@ -495,6 +457,5 @@ void usb_audio_init(rtos_intertile_t *intertile_ctx,
     sampleFreqRng.subrange[0].bMin = appconfAUDIO_PIPELINE_SAMPLE_RATE;
     sampleFreqRng.subrange[0].bMax = appconfAUDIO_PIPELINE_SAMPLE_RATE;
     sampleFreqRng.subrange[0].bRes = 0;
-
-    xTaskCreate((TaskFunction_t) usb_audio_in_task, "usb_audio_in_task", portTASK_STACK_DEPTH(usb_audio_in_task), intertile_ctx, priority, NULL);
 }
+

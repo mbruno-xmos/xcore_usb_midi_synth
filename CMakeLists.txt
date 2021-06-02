@@ -46,6 +46,7 @@ set(APP_SOURCES
     "src/platform/app_pll_ctrl.c"
     "src/platform/aic3204.c"
     
+    "src/usb/usb_midi.c"
     "src/usb/usb_audio.c"
     "src/usb/usb_descriptors.c"
     "src/usb/adaptive_rate_adjust.c"
