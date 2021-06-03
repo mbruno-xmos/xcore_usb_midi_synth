@@ -356,7 +356,6 @@ bool tud_audio_tx_done_pre_load_cb(uint8_t rhport,
                                    uint8_t cur_alt_setting)
 {
     static int ready;
-    uint8_t buf[BYTES_PER_TX_FRAME_NOMINAL];
 
     (void) rhport;
     (void) itf;
@@ -370,15 +369,26 @@ bool tud_audio_tx_done_pre_load_cb(uint8_t rhport,
 
     samp_t samples[SAMPLES_PER_FRAME_NOMINAL][CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX] = {{0}};
 
+    int16_t mix[SAMPLES_PER_FRAME_NOMINAL][CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX] = {{0}};
     for (int i = 0; i < SAMPLES_PER_FRAME_NOMINAL; i++) {
         for (int synth_ch = 0, usb_ch = 0; synth_ch < SYNTH_CHANNELS; synth_ch++, usb_ch++) {
             if (usb_ch >= CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX) {
                 usb_ch = 0;
             }
-            samples[i][usb_ch] += sample_get_next(midi_sequencer_synth_state(), synth_ch) / (SYNTH_CHANNELS / CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX);
+            mix[i][usb_ch] += sample_get_next(midi_sequencer_synth_state(), synth_ch);
+        }
+
+        for (int usb_ch = 0; usb_ch < CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX; usb_ch++) {
+#if CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX == 1
+            if (mix[i][usb_ch] < INT8_MIN) {
+                mix[i][usb_ch] = INT8_MIN;
+            } else if (mix[i][usb_ch] > INT8_MAX) {
+                mix[i][usb_ch] = INT8_MAX;
+            }
+#endif
+            samples[i][usb_ch] = mix[i][usb_ch];
         }
     }
-    memcpy(buf, samples, BYTES_PER_TX_FRAME_NOMINAL);
 
     /*
      * TODO:
@@ -388,7 +398,7 @@ bool tud_audio_tx_done_pre_load_cb(uint8_t rhport,
      * THE OTHER TILE WILL PICK IT UP AND SEND IT TO I2S.
      */
 
-    tud_audio_write(buf, BYTES_PER_TX_FRAME_NOMINAL);
+    tud_audio_write(samples, BYTES_PER_TX_FRAME_NOMINAL);
 
     return true;
 }

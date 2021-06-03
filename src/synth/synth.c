@@ -136,5 +136,10 @@ int8_t sample_get_next(synth_state_t *synth_state, int channel)
 
     sample = dsp_math_multiply(sample, ch_state->volume, 0+24-0);
 
+    /*
+     * Scale each channel to -6 dBFS. This should result in mixing that rarely clips.
+     */
+    sample = dsp_math_multiply(sample, Q24(0.5), 0+24-0);
+
     return sample;
 }
