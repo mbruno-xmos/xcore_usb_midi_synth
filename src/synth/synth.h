@@ -22,6 +22,7 @@
 typedef enum {
     synth_instrument_sine,
     synth_instrument_piano,
+    synth_instrument_drum,
 
 } synth_instrument_t;
 

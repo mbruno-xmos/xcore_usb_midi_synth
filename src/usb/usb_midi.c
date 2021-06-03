@@ -15,27 +15,35 @@ void tud_midi_rx_cb(uint8_t itf)
 
     while (tud_midi_n_packet_read(itf, event)) {
 
-        uint8_t param1 = event[2] & 0x7F;
-        uint8_t param2 = event[3] & 0x7F;
+        uint8_t usb_cin = event[0] & 0x0F;
+        uint8_t status =  event[1] >> 4;
+        uint8_t channel = event[1] & 0x0F;
+        uint8_t param1 =  event[2] & 0x7F;
+        uint8_t param2 =  event[3] & 0x7F;
 
-        switch (event[0] & 0xF) {
+        switch (usb_cin) {
         case 0x8: /* note off */
             if (param2 == 0) {
                 param2 = 0x7F;
             }
-            midi_sequencer_note_off(param1, param2);
+            midi_sequencer_note_off(channel, param1, param2);
             break;
 
         case 0x9: /*note on */
             if ((event[3] & 0x7F) == 0) {
-                midi_sequencer_note_off(param1, 0x7F);
+                midi_sequencer_note_off(channel, param1, 0x7F);
             } else {
-                midi_sequencer_note_on(param1, param2);
+                midi_sequencer_note_on(channel, param1, param2);
             }
             break;
 
+        case 0xB: /* control change */
+            rtos_printf("Control change %d, %d for channel %d\n", param1, param2, channel);
+            break;
+
         case 0xC: /* program change */
-            midi_sequencer_program_change(param1);
+            rtos_printf("Program %d for channel %d\n", param1, channel);
+            midi_sequencer_program_change(channel, param1);
             break;
 
         default:

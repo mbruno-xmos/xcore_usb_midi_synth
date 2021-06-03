@@ -379,6 +379,9 @@ bool tud_audio_tx_done_pre_load_cb(uint8_t rhport,
         }
 
         for (int usb_ch = 0; usb_ch < CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX; usb_ch++) {
+
+            mix[i][usb_ch] = dsp_math_multiply(mix[i][usb_ch], Q31(0.25), 0+31-0);
+
 #if CFG_TUD_AUDIO_FUNC_1_N_BYTES_PER_SAMPLE_TX == 1
             if (mix[i][usb_ch] < INT8_MIN) {
                 mix[i][usb_ch] = INT8_MIN;

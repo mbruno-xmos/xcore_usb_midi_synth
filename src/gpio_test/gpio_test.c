@@ -5,7 +5,7 @@
 
 #include "FreeRTOS.h"
 
-#include "platform/app_pll_ctrl.h"
+#include "midi_sequencer.h"
 #include "gpio_test/gpio_test.h"
 
 RTOS_GPIO_ISR_CALLBACK_ATTR
@@ -54,10 +54,9 @@ static void gpio_handler(rtos_gpio_t *gpio_ctx)
         extern volatile int aec_ref_source;
         if (buttonA == 0) {
             rtos_printf("button a\n");
-//            app_pll_nudge(APP_PLL_NUDGE_FASTER);
+            midi_sequencer_reset();
         } else if (buttonB == 0) {
             rtos_printf("button b\n");
-//            app_pll_nudge(APP_PLL_NUDGE_SLOWER);
         }
     }
 }

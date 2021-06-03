@@ -8,6 +8,7 @@
 #include <xcore/assert.h>
 #include <dsp.h>
 #include <rtos_printf.h>
+#include <random.h>
 
 #include "synth.h"
 #include "synth_wave_table.h"
@@ -28,13 +29,15 @@ void synth_channel_instrument_set(synth_state_t *synth_state, int channel, synth
 
     if (instrument == synth_instrument_piano) {
 #define PIANO_ON_LENGTH (10000 * (SYNTH_SAMPLE_RATE/1000))
-#define PIANO_ON_LENGTH (10000 * (SYNTH_SAMPLE_RATE/1000))
         ch_state->attack_decay_rate = Q24(1.0 / (2*SYNTH_CHANNEL_MODE_ATTACK_2_LENGTH));
         ch_state->sustain_decay_rate = Q24(1.0 / PIANO_ON_LENGTH);
-    }
-    if (instrument == synth_instrument_sine) {
+    } else if (instrument == synth_instrument_sine) {
         ch_state->attack_decay_rate = 0;
         ch_state->sustain_decay_rate = 0;
+    } else if (instrument == synth_instrument_drum) {
+#define DRUM_ON_LENGTH (1000 * (SYNTH_SAMPLE_RATE/1000))
+        ch_state->attack_decay_rate = Q24(1.0 / (4*SYNTH_CHANNEL_MODE_ATTACK_2_LENGTH));
+        ch_state->sustain_decay_rate = Q24(1.0 / DRUM_ON_LENGTH);
     }
 }
 
@@ -129,6 +132,15 @@ int8_t sample_get_next(synth_state_t *synth_state, int channel)
     /* TODO: Interpolate */
     sample = synth_wave_table[ch_state->instrument][i];
 
+    if (ch_state->instrument == synth_instrument_drum) {
+        static random_generator_t seed;
+        int32_t r;
+        r = random_get_random_number(&seed);
+
+        r >>= 24;
+        sample += r/8;
+    }
+
     ch_state->wave_table_index += ch_state->wave_table_step;
     while (ch_state->wave_table_index >= Q16(SYNTH_WAVE_TABLE_SIZE)) {
         ch_state->wave_table_index -= Q16(SYNTH_WAVE_TABLE_SIZE);
@@ -139,7 +151,7 @@ int8_t sample_get_next(synth_state_t *synth_state, int channel)
     /*
      * Scale each channel to -6 dBFS. This should result in mixing that rarely clips.
      */
-    sample = dsp_math_multiply(sample, Q24(0.5), 0+24-0);
+//    sample = dsp_math_multiply(sample, Q24(0.5), 0+24-0);
 
     return sample;
 }
