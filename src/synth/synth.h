@@ -28,15 +28,28 @@ typedef enum {
 
 typedef struct {
     synth_instrument_t instrument;
-    enum {SYNTH_CHANNEL_MODE_OFF, SYNTH_CHANNEL_MODE_ATTACK_1, SYNTH_CHANNEL_MODE_ATTACK_2, SYNTH_CHANNEL_MODE_SUSTAIN, SYNTH_CHANNEL_MODE_RELEASED} mode;
-    int32_t frequency;
+    enum {SYNTH_CHANNEL_MODE_OFF, SYNTH_CHANNEL_MODE_ATTACK, SYNTH_CHANNEL_MODE_DECAY, SYNTH_CHANNEL_MODE_SUSTAIN, SYNTH_CHANNEL_MODE_RELEASED} mode;
+    
+    int on;
+    struct {
+        int cur_stage;
+        int stage_count;
+        int32_t volume_scale_factor; /* MIDI ON velocity */
+        int32_t volume[8];
+        int32_t length_inv[8]; /* 1/length of stage, where length is sample count */
+        int32_t length[8]; /* length of stage, where length is sample count */
+        int32_t cur_rate;
+        int32_t cur_volume;
+        int32_t stage_time;
+    } envelope;
+
+    int32_t frequency1;
+    int32_t frequency2;
+    int32_t sweep_time;
+
     int32_t wave_table_step;
     size_t wave_table_index;
-    int32_t mode_time;
-    int32_t velocity;
-    int32_t attack_decay_rate;
-    int32_t sustain_decay_rate;
-    int32_t volume;
+    
 } synth_channel_state_t;
 
 typedef struct {

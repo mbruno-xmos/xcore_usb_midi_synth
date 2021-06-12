@@ -63,7 +63,7 @@ void midi_sequencer_note_on(int channel, int note_number, int velocity)
     for (synth_channel = 0; synth_channel < SYNTH_CHANNELS; synth_channel++) {
         synth_channel_state_t *ch_state;
         ch_state = &synth_state.channel_state[synth_channel];
-        if (ch_state->mode == SYNTH_CHANNEL_MODE_OFF) {
+        if (!ch_state->on) {
             break;
         }
     }
@@ -72,14 +72,13 @@ void midi_sequencer_note_on(int channel, int note_number, int velocity)
         for (synth_channel = 0; synth_channel < SYNTH_CHANNELS; synth_channel++) {
             synth_channel_state_t *ch_state;
             ch_state = &synth_state.channel_state[synth_channel];
-            if (ch_state->mode == SYNTH_CHANNEL_MODE_RELEASED) {
+            if (ch_state->envelope.cur_stage >= ch_state->envelope.stage_count - 1) {
                 break;
             }
         }
     }
 
     if (synth_channel < SYNTH_CHANNELS) {
-        xassert(!channel_info[synth_channel].on);
         channel_info[synth_channel].note = note_number;
         channel_info[synth_channel].midi_channel = channel;
         channel_info[synth_channel].on = 1;
