@@ -15,12 +15,14 @@
 #define SYNTH_CHANNELS 16
 #define SYNTH_WAVE_TABLE_SIZE 128
 
-#define SYNTH_CHANNEL_MODE_ATTACK_1_LENGTH (25 * (SYNTH_SAMPLE_RATE/1000))
-#define SYNTH_CHANNEL_MODE_ATTACK_2_LENGTH (50 * (SYNTH_SAMPLE_RATE/1000))
-#define SYNTH_CHANNEL_MODE_RELEASED_LENGTH (10 * (SYNTH_SAMPLE_RATE/1000))
-
 typedef enum {
     synth_instrument_sine,
+    synth_instrument_pulse_12p5,
+    synth_instrument_pulse_25,
+    synth_instrument_pulse_50,
+    synth_instrument_pulse_75,
+    synth_instrument_triangle,
+    synth_instrument_sawtooth,
     synth_instrument_piano,
     synth_instrument_drum,
 
@@ -44,8 +46,10 @@ typedef struct {
     } envelope;
 
     int32_t frequency1;
-    int32_t frequency2;
-    int32_t sweep_time;
+    int32_t wave_table_step_final;
+    int32_t wave_table_step_sweep_increment;
+
+    int sweeping;
 
     int32_t wave_table_step;
     size_t wave_table_index;
@@ -59,6 +63,7 @@ typedef struct {
 
 void synth_channel_instrument_set(synth_state_t *synth_state, int channel, synth_instrument_t instrument);
 void synth_channel_on(synth_state_t *synth_state, int channel, int32_t frequency, int32_t velocity);
+void synth_channel_sweep_set(synth_state_t *synth_state, int channel, int32_t frequency2, int32_t sweep_time);
 void synth_channel_off(synth_state_t *synth_state, int channel, int32_t velocity);
 int8_t sample_get_next(synth_state_t *synth_state, int channel);
 

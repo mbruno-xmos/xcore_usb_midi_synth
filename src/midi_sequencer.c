@@ -17,7 +17,9 @@ static int32_t note_frequency_lookup[128];
 static synth_state_t synth_state;
 
 static int channel_program[16];
-static synth_instrument_t channel_instrument[16];
+static synth_instrument_t channel_instrument[16] = {
+        [9] = synth_instrument_drum,
+};
 
 typedef struct {
     int midi_channel;
@@ -51,7 +53,7 @@ void midi_sequencer_note_on(int channel, int note_number, int velocity)
     if (channel_instrument[channel] != synth_instrument_drum) {
         frequency = note_frequency_lookup[note_number];
     } else {
-        frequency = Q16(70.0);
+        frequency = Q16(523.25);
     }
 
     /*
@@ -85,6 +87,9 @@ void midi_sequencer_note_on(int channel, int note_number, int velocity)
 
         synth_channel_instrument_set(&synth_state, synth_channel, channel_instrument[channel]);
         synth_channel_on(&synth_state, synth_channel, frequency, synth_velocity);
+        if (channel_instrument[channel] == synth_instrument_drum) {
+            synth_channel_sweep_set(&synth_state, synth_channel, Q16(50.0), 35);
+        }
     } else {
         rtos_printf("Cannot play more than %d notes at a time\n", SYNTH_CHANNELS);
     }
@@ -122,8 +127,40 @@ synth_instrument_t program_to_instrument(int program_number)
     case 7:
     case 8:
         return synth_instrument_piano;
+    case 25:
+    case 26:
+    case 27:
+    case 28:
+    case 29:
+    case 30:
+    case 31:
+    case 32:
+        return synth_instrument_triangle;
+    case 33:
+    case 34:
+    case 35:
+    case 36:
+    case 37:
+    case 38:
+    case 39:
+    case 40:
+        return synth_instrument_triangle;
+    case 81:
+        return synth_instrument_pulse_50;
+    case 82:
+        return synth_instrument_sawtooth;
+    case 113:
+    case 114:
+    case 115:
+    case 116:
+    case 117:
+    case 118:
+    case 119:
+    case 120:
+    case 128:
+        return synth_instrument_drum;
     default:
-        return synth_instrument_piano;
+        return synth_instrument_pulse_12p5;
     }
 }
 
