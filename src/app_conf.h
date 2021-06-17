@@ -25,7 +25,7 @@
 #endif
 
 #ifndef appconfUSB_AUDIO_IN_CHANNELS
-#define appconfUSB_AUDIO_IN_CHANNELS      1
+#define appconfUSB_AUDIO_IN_CHANNELS      16
 #endif
 
 /* I/O and interrupt cores for Tile 0 */

@@ -46,6 +46,10 @@ void tud_midi_rx_cb(uint8_t itf)
             midi_sequencer_program_change(channel, param1);
             break;
 
+        case 0xE: /* pitch change */
+            midi_sequencer_pitch_change(channel, (((int) param2) << 7) | param1);
+            break;
+
         default:
             break;
         }
