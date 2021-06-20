@@ -39,6 +39,13 @@ void synth_envelope_create(synth_channel_envelope_t *envelope, int stage_count, 
     }
 }
 
+void synth_channel_volume_set(synth_state_t *synth_state, int channel, int32_t volume)
+{
+    synth_channel_state_t *ch_state = channel_state_get(synth_state, channel);
+
+    ch_state->channel_volume = volume;
+}
+
 void synth_channel_envelope_set(synth_state_t *synth_state, int channel, synth_channel_envelope_t *envelope)
 {
     synth_channel_state_t *ch_state = channel_state_get(synth_state, channel);
@@ -247,7 +254,24 @@ int8_t sample_get_next(synth_state_t *synth_state, int channel)
         }
     }
 
-    sample = dsp_math_multiply(sample, ch_state->envelope_state.cur_volume, 0+24-0);
+#if 0
+    int32_t sample_multiplier = dsp_math_multiply(ch_state->channel_volume, ch_state->envelope_state.cur_volume, 24);
+#else
+
+    int32_t m1 = ch_state->channel_volume;
+    int32_t m2 = ch_state->envelope_state.cur_volume;
+
+const double ln10 = 2.30258509299;
+const double db_range = 42;
+const q8_24 a = Q24(db_range * ln10 / 20.0);
+
+    m1 = dsp_math_multiply(a,m1,24) - a;
+    m2 = dsp_math_multiply(a,m2,24) - a;
+    int32_t sample_multiplier = dsp_math_exp(m1 + m2);
+
+#endif
+
+    sample = dsp_math_multiply(sample, sample_multiplier, 0+24-0);
 
     return sample;
 }

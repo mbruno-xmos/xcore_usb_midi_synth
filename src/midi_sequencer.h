@@ -14,6 +14,7 @@ void midi_sequencer_reset(void);
 void midi_sequencer_note_on(int channel, int note_number, int velocity);
 void midi_sequencer_note_off(int channel, int note_number, int velocity);
 void midi_sequencer_pitch_change(int channel, int pitch);
+void midi_sequencer_channel_volume_change(int channel, int volume);
 void midi_sequencer_program_change(int channel, int program_number);
 synth_state_t * midi_sequencer_synth_state(void);
 

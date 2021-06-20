@@ -24,6 +24,7 @@ typedef struct {
 
 typedef struct {
     int on;
+    int32_t channel_volume;
     synth_channel_envelope_t envelope;
     struct {
         int cur_stage;
@@ -55,6 +56,7 @@ typedef struct {
 
 
 void synth_envelope_create(synth_channel_envelope_t *envelope, int stage_count, int32_t volume[], int32_t length[]);
+void synth_channel_volume_set(synth_state_t *synth_state, int channel, int32_t volume);
 void synth_channel_envelope_set(synth_state_t *synth_state, int channel, synth_channel_envelope_t *envelope);
 void synth_channel_sweep_set(synth_state_t *synth_state, int channel, int32_t sweep_range, int sweep_direction, int32_t sweep_length);
 void synth_channel_sweep_off(synth_state_t *synth_state, int channel);

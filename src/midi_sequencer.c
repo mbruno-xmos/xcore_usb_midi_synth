@@ -51,6 +51,7 @@ static synth_state_t synth_state;
 
 static int channel_program[16];
 static int channel_pitch_bend[16];
+static int32_t channel_volume[16];
 
 typedef struct {
     int midi_channel;
@@ -114,13 +115,13 @@ void midi_sequencer_reset(void)
     int32_t volume[4];
     int32_t length[4];
 
-    volume[0] = Q24(0.25); length[0] = 25;
+    volume[0] = Q24(.929); length[0] = 25;
     volume[1] = Q24(0.75); length[1] = 50;
     volume[2] = Q24(0.00); length[2] = 10000;
     volume[3] = Q24(0.00); length[3] = 25;
     synth_envelope_create(&default_envelope, 4, volume, length);
 
-    volume[0] = Q24(0.25); length[0] = 0;
+    volume[0] = Q24(.929); length[0] = 0;
     volume[1] = Q24(0.00); length[1] = 250;
     volume[2] = Q24(0.00); length[2] = 50;
     synth_envelope_create(&drum_envelope, 3, volume, length);
@@ -131,6 +132,7 @@ void midi_sequencer_reset(void)
 
     for (int i = 0; i < 16; i++) {
         channel_pitch_bend[i] = 8192;
+        channel_volume[i] = Q24(1);
     }
 }
 
@@ -208,6 +210,8 @@ static void synth_channel_setup(int synth_channel, int midi_channel)
         sweep_range = Q16(0.1);
         sweep_length = 35;
     }
+
+    synth_channel_volume_set(&synth_state, synth_channel, channel_volume[midi_channel]);
 
     synth_channel_wave_table_set(&synth_state, synth_channel, wave_table);
     synth_channel_envelope_set(&synth_state, synth_channel, envelope);
@@ -330,6 +334,34 @@ void midi_sequencer_pitch_change(int channel, int pitch)
             }
         }
     }
+}
+
+void midi_sequencer_channel_volume_change(int channel, int volume)
+{
+    int32_t synth_volume;
+    int synth_channel;
+
+    xassert(channel >= 0 && channel < 16);
+
+    synth_volume = dsp_math_multiply(volume, Q24(1.0/127.0), 0+24-24);
+
+    channel_volume[channel] = synth_volume;
+
+    /*
+     * Apply the volume to all active synth channels that are
+     * associated with this MIDI channel.
+     */
+    for (synth_channel = 0; synth_channel < SYNTH_CHANNELS; synth_channel++) {
+        if (channel_info[synth_channel].midi_channel == channel) {
+            synth_channel_state_t *ch_state;
+            ch_state = &synth_state.channel_state[synth_channel];
+            if (ch_state->on) {
+                synth_channel_volume_set(&synth_state, synth_channel, synth_volume);
+            }
+        }
+    }
+
+
 }
 
 void midi_sequencer_program_change(int channel, int program_number)

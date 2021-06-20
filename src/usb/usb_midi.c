@@ -39,6 +39,9 @@ void tud_midi_rx_cb(uint8_t itf)
 
         case 0xB: /* control change */
             rtos_printf("Control change %d, %d for channel %d\n", param1, param2, channel);
+            if (param1 == 7) {
+                midi_sequencer_channel_volume_change(channel, param2);
+            }
             break;
 
         case 0xC: /* program change */
