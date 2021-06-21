@@ -15,6 +15,10 @@
 
 #define PITCH_BEND_LOOKUP 0
 
+#define ENVELOPE_DR 48.0
+#define VOLUME_DR   24.0
+#define VELOCITY_DR 42.0
+
 static int32_t note_frequency_lookup[128];
 
 /*
@@ -62,6 +66,7 @@ typedef struct {
 channel_info_t channel_info[SYNTH_CHANNELS];
 
 static synth_channel_envelope_t default_envelope;
+static synth_channel_envelope_t piano_envelope;
 static synth_channel_envelope_t drum_envelope;
 
 void midi_sequencer_reset(void)
@@ -115,15 +120,21 @@ void midi_sequencer_reset(void)
     int32_t volume[4];
     int32_t length[4];
 
-    volume[0] = Q24(.929); length[0] = 25;
-    volume[1] = Q24(0.75); length[1] = 50;
-    volume[2] = Q24(0.00); length[2] = 10000;
-    volume[3] = Q24(0.00); length[3] = 25;
+    volume[0] = Q24(-3.0); length[0] = 25;
+    volume[1] = Q24(-8.0); length[1] = 50;
+    volume[2] = Q24(-8.0); length[2] = INT32_MAX;
+    volume[3] = Q24(-ENVELOPE_DR); length[3] = 25;
     synth_envelope_create(&default_envelope, 4, volume, length);
 
-    volume[0] = Q24(.929); length[0] = 0;
-    volume[1] = Q24(0.00); length[1] = 250;
-    volume[2] = Q24(0.00); length[2] = 50;
+    volume[0] = Q24(-3.0); length[0] = 25;
+    volume[1] = Q24(-8.0); length[1] = 50;
+    volume[2] = Q24(-ENVELOPE_DR); length[2] = 10000;
+    volume[3] = Q24(-ENVELOPE_DR); length[3] = 25;
+    synth_envelope_create(&piano_envelope, 4, volume, length);
+
+    volume[0] = Q24(-3.0); length[0] = 0;
+    volume[1] = Q24(-ENVELOPE_DR); length[1] = 250;
+    volume[2] = Q24(-ENVELOPE_DR); length[2] = 50;
     synth_envelope_create(&drum_envelope, 3, volume, length);
 
     memset(&synth_state, 0, sizeof(synth_state));
@@ -132,7 +143,7 @@ void midi_sequencer_reset(void)
 
     for (int i = 0; i < 16; i++) {
         channel_pitch_bend[i] = 8192;
-        channel_volume[i] = Q24(1);
+        channel_volume[i] = Q24(0);
     }
 }
 
@@ -162,6 +173,7 @@ static void synth_channel_setup(int synth_channel, int midi_channel)
     case 7:
     case 8:
         wave_table = synth_wave_table[synth_waveform_piano];
+        envelope = &piano_envelope;
         break;
     case 25:
     case 26:
@@ -236,7 +248,7 @@ void midi_sequencer_note_on(int channel, int note_number, int velocity)
     xassert(channel >= 0 && channel < 16);
     xassert(note_number >= 0 && note_number < 128);
 
-    synth_velocity = dsp_math_multiply(velocity, Q24(1.0/127.0), 0+24-24);
+    synth_velocity = dsp_math_multiply(velocity, Q24(VELOCITY_DR/127.0), 0+24-24) - Q24(VELOCITY_DR);
 
     if (channel != 9) {
         frequency = note_frequency_lookup[note_number];
@@ -302,7 +314,7 @@ void midi_sequencer_note_off(int channel, int note_number, int velocity)
      */
     for (synth_channel = 0; synth_channel < SYNTH_CHANNELS; synth_channel++) {
         if (channel_info[synth_channel].on && channel_info[synth_channel].note == note_number && channel_info[synth_channel].midi_channel == channel) {
-            int32_t synth_velocity = dsp_math_multiply(velocity, Q24(1.0/127.0), 0+24-24);
+            int32_t synth_velocity = dsp_math_multiply(velocity, Q24(VELOCITY_DR/127.0), 0+24-24) - Q24(VELOCITY_DR);
             synth_channel_off(&synth_state, synth_channel, synth_velocity);
             channel_info[synth_channel].on = 0;
             return;
@@ -343,7 +355,7 @@ void midi_sequencer_channel_volume_change(int channel, int volume)
 
     xassert(channel >= 0 && channel < 16);
 
-    synth_volume = dsp_math_multiply(volume, Q24(1.0/127.0), 0+24-24);
+    synth_volume = dsp_math_multiply(volume, Q24(VOLUME_DR/127.0), 0+24-24) - Q24(VOLUME_DR);
 
     channel_volume[channel] = synth_volume;
 

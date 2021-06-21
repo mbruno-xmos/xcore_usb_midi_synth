@@ -14,6 +14,7 @@
 #include "synth.h"
 #include "synth_wave_table.h"
 
+#define DR 48.0
 
 static synth_channel_state_t *channel_state_get(synth_state_t *synth_state, int channel)
 {
@@ -28,12 +29,14 @@ void synth_envelope_create(synth_channel_envelope_t *envelope, int stage_count, 
 
     for (int i = 0; i < stage_count; i++) {
         envelope->volume[i] = volume[i];
-        envelope->length[i] = length[i] * (SYNTH_SAMPLE_RATE/1000);
         if (length[i] == INT32_MAX) {
+            envelope->length[i] = INT32_MAX;
             envelope->length_inv[i] = 0;
         } else if (length[i] == 0) {
+            envelope->length[i] = 0;
             envelope->length_inv[i] = Q24(1);
         } else {
+            envelope->length[i] = length[i] * (SYNTH_SAMPLE_RATE/1000);
             envelope->length_inv[i] = dsp_math_divide(Q24(1), envelope->length[i], 0);
         }
     }
@@ -103,11 +106,6 @@ void synth_channel_frequency_change(synth_state_t *synth_state, int channel, int
             ch_state->wave_table_step_sweep_increment =
                     dsp_math_divide(wave_table_step - ch_state->wave_table_step, transition_length * (SYNTH_SAMPLE_RATE / 1000), 0);
 
-        //    rtos_printf("step1: %d\n", ch_state->wave_table_step >> 24);
-        //    rtos_printf("step2: %d\n", ch_state->wave_table_step_final >> 24);
-        //    rtos_printf("step_inc: %d\n", ch_state->wave_table_step_sweep_increment);
-        //    rtos_printf("sweep_time: %d\n", transition_length * (SYNTH_SAMPLE_RATE / 1000));
-
             if (wave_table_step != ch_state->wave_table_step) {
                 ch_state->sweeping = 1;
             } else {
@@ -129,17 +127,16 @@ void synth_channel_on(synth_state_t *synth_state, int channel, int32_t frequency
         if (!ch_state->on) {
             /* These should probably already be set to 0 when the channel is turned off */
             ch_state->wave_table_index = 0;
-            ch_state->envelope_state.cur_volume = 0;
+            ch_state->envelope_state.cur_volume = Q24(-DR);
         }
 
         ch_state->on = 1;
-        //ch_state->envelope_state.volume_scale_factor = velocity;
-        ch_state->envelope_state.volume_scale_factor = dsp_math_multiply(velocity, ch_state->envelope.volume[0], 24);
+
+        ch_state->envelope_state.volume_scale_factor = velocity + ch_state->envelope.volume[0];
 
         const int stage = 0;
         ch_state->envelope_state.cur_stage = stage;
         ch_state->envelope_state.stage_time = 0;
-        //const int32_t target_volume = dsp_math_multiply(ch_state->envelope_state.volume_scale_factor, ch_state->envelope.volume[stage], 24);
         const int32_t target_volume = ch_state->envelope_state.volume_scale_factor;
         ch_state->envelope_state.cur_rate = dsp_math_multiply(target_volume - ch_state->envelope_state.cur_volume, ch_state->envelope.length_inv[stage], 24);
 
@@ -168,6 +165,9 @@ void synth_channel_on(synth_state_t *synth_state, int channel, int32_t frequency
     }
 }
 
+/*
+ * TODO: velocity currently unused. do something with it? remove it?
+ */
 void synth_channel_off(synth_state_t *synth_state, int channel, int32_t velocity)
 {
     synth_channel_state_t *ch_state = channel_state_get(synth_state, channel);
@@ -176,7 +176,7 @@ void synth_channel_off(synth_state_t *synth_state, int channel, int32_t velocity
         const int stage = ch_state->envelope.stage_count - 1;
         ch_state->envelope_state.cur_stage = stage;
         ch_state->envelope_state.stage_time = 0;
-        const int32_t target_volume = dsp_math_multiply(ch_state->envelope_state.volume_scale_factor, ch_state->envelope.volume[stage], 24);
+        const int32_t target_volume = ch_state->envelope_state.volume_scale_factor + ch_state->envelope.volume[stage];
         ch_state->envelope_state.cur_rate = dsp_math_multiply(target_volume - ch_state->envelope_state.cur_volume, ch_state->envelope.length_inv[stage], 24);
     }
 }
@@ -196,17 +196,17 @@ int8_t sample_get_next(synth_state_t *synth_state, int channel)
     ch_state->envelope_state.stage_time++;
 
     ch_state->envelope_state.cur_volume += ch_state->envelope_state.cur_rate;
-    if (ch_state->envelope_state.cur_volume >= Q24(1.0)) {
-        ch_state->envelope_state.cur_volume = Q24(1.0);
-    }
-    if (ch_state->envelope_state.cur_volume <= Q24(0.0)) {
+    if (ch_state->envelope_state.cur_volume >= Q24(0.0)) {
         ch_state->envelope_state.cur_volume = Q24(0.0);
+    }
+    if (ch_state->envelope_state.cur_volume <= Q24(-DR)) {
+        ch_state->envelope_state.cur_volume = Q24(-DR);
     }
     if (ch_state->envelope_state.stage_time >= ch_state->envelope.length[stage]) {
         stage++;
         if (stage < ch_state->envelope.stage_count) {
             ch_state->envelope_state.stage_time = 0;
-            const int32_t target_volume = dsp_math_multiply(ch_state->envelope_state.volume_scale_factor, ch_state->envelope.volume[stage], 24);
+            const int32_t target_volume = ch_state->envelope_state.volume_scale_factor + ch_state->envelope.volume[stage];
             ch_state->envelope_state.cur_rate = dsp_math_multiply(target_volume - ch_state->envelope_state.cur_volume, ch_state->envelope.length_inv[stage], 24);
         } else {
             stage = 0;
@@ -254,22 +254,12 @@ int8_t sample_get_next(synth_state_t *synth_state, int channel)
         }
     }
 
-#if 0
-    int32_t sample_multiplier = dsp_math_multiply(ch_state->channel_volume, ch_state->envelope_state.cur_volume, 24);
-#else
 
+    const double ln10 = 2.30258509299;
     int32_t m1 = ch_state->channel_volume;
     int32_t m2 = ch_state->envelope_state.cur_volume;
 
-const double ln10 = 2.30258509299;
-const double db_range = 42;
-const q8_24 a = Q24(db_range * ln10 / 20.0);
-
-    m1 = dsp_math_multiply(a,m1,24) - a;
-    m2 = dsp_math_multiply(a,m2,24) - a;
-    int32_t sample_multiplier = dsp_math_exp(m1 + m2);
-
-#endif
+    int32_t sample_multiplier = dsp_math_exp(dsp_math_multiply(m1 + m2, Q24(ln10 / 20.0), 24));
 
     sample = dsp_math_multiply(sample, sample_multiplier, 0+24-0);
 
